@@ -1,0 +1,12 @@
+{
+    "manifest_version": 2,
+    "name": "Vodsync for VLR.gg",
+    "version": "1.0",
+    "description": "Add Twitch costreams to VLR.gg",
+    "content_scripts": [
+            {
+            "matches": ["*://*.vlr.gg/*"],
+            "js": ["script.js"]
+        }
+    ]
+}
