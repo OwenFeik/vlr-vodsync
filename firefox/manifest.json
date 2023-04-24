@@ -3,6 +3,7 @@
     "name": "Vodsync for VLR.gg",
     "version": "1.0",
     "description": "Add Twitch costreams to VLR.gg",
+    "permissions": ["https://gql.twitch.tv/gql"],
     "content_scripts": [
             {
             "matches": ["*://*.vlr.gg/*"],
