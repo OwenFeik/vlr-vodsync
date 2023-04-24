@@ -100,7 +100,57 @@ function getMatchTime() {
 }
 
 /**
- * Finds a list of vods and calls callback with an array of { streamer, vodId }
+ * @param {number} matchTime Scheduled start time of the match (epoch ms).
+ * @param {number} streamTime Start time of the stream (epoch ms).
+ * @param {number} streamLength Duration of the stream (ms).
+ * @returns Whether a given stream includes a given match time.
+ */
+function vodIncludesMatch(matchTime, streamTime, streamLength) {
+    return (
+        streamTime <= matchTime
+        && streamTime + streamLength >= matchTime
+    );
+}
+
+/**
+ * Build a vod URL from match time, vided id and stream time, with an
+ * appropriate timestamp.
+ * 
+ * @param {number} matchTime Scheduled start time of the match (epoch ms).
+ * @param {String} videoId ID of the twitch video.
+ * @param {number} streamTime Start time of the twitch video.
+ * @returns {String} Link to the start of the match.
+ */
+function getVodUrl(matchTime, videoId, streamTime) {
+    const URL_PREFIX = "https://www.twitch.tv/videos/";
+    return (
+        URL_PREFIX
+        + videoId
+        + "?t="
+        + Math.round((matchTime - streamTime) / 1000) // ms to s
+        + "s"
+    );
+}
+
+/**
+ * @param {number} matchTime Scheduled match start timestamp (epoch ms)
+ * @param {Object[]} edges GQL edges to search for a co stream. 
+ * @returns {String|null} A vod url if one was found, else null.
+ */
+function findCoStream(matchTime, edges) {
+    for (const edge of edges) {
+        let video = edge["node"];
+        let streamTime = new Date(video["createdAt"]).getTime();
+        let streamLength = video["lengthSeconds"] * 1000; // s to ms
+        if (vodIncludesMatch(matchTime, streamTime, streamLength)) {
+            return getVodUrl(matchTime, video["id"], streamTime);
+        }
+    }
+    return null;
+}
+
+/**
+ * Finds a list of vods and calls callback with an array of { streamer, url }
  * objects.
  *  
  * @param {Object[] => void} callback Handler for vod list. 
@@ -112,22 +162,10 @@ function findCoStreams(callback) {
     getLatestStreamerVods(streamers, data => {
         let vods = [];
 
-        console.log(data);
         data["users"].forEach(entry => {
-            let vodId = null;
-            entry["videos"]["edges"].forEach(edge => {
-                let node = edge["node"];
-                let streamTime = new Date(node["createdAt"]).getTime();
-                let length = node["lengthSeconds"] * 1000; // s to ms
-                let startsBefore = streamTime <= matchTime;
-                let endsAfter = streamTime + length >= matchTime; 
-                if (startsBefore && endsAfter) {
-                    vodId = node["id"];
-                }
-            });
-    
-            if (vodId != null) {
-                vods.push({ streamer: entry["login"], vodId });
+            let url = findCoStream(matchTime, entry["videos"]["edges"]);
+            if (url) {
+                vods.push({ streamer: entry["login"], url });
             }
         });
     
@@ -139,15 +177,25 @@ function findCoStreams(callback) {
  * Create a link for each co stream found.
  */
 function addCoStreamLinks() {
-    const URL_PREFIX = "https://www.twitch.tv/videos/";
+    findCoStreams(
+        vods => vods.forEach(
+            vod => addStreamLink(vod.streamer, vod.url)
+        )
+    );
+}
 
-    findCoStreams(vods => vods.forEach(
-        vod => addStreamLink(vod.streamer, URL_PREFIX + vod.vodId)
-    ));
+/**
+ * @returns {boolean} Whether the current page is a match page.
+ */
+function isMatchPage() {
+    const REGEX = /(https:\/\/)?(www.)?vlr.gg\/\d+\/.*/;
+    return REGEX.test(window.location.href);
 }
 
 function main() {
-    addCoStreamLinks();
+    if (isMatchPage()) {
+        addCoStreamLinks();
+    }
 }
 
 main();
