@@ -1,5 +1,4 @@
-# TODO
+# Vodsync for VLR.gg
 
-* Filter for streamers showing VALORANT
-* Show streamers under streams (if currently streaming valorant)
-* Chrome extension
+Browser extension which adds links to co-stream VODs to VLR.gg match pages.
+

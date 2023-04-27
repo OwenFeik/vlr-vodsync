@@ -1,13 +1,22 @@
 html {
-    --bg: #2C363F;
+    --dark: #2C363F;
     --accent-bright: #E75A7C;
     --accent-subtle: #BBC7A4;
-    --fg-1: #F2F5EA;
-    --fg-2: #D6DBD2;
+    --light-1: #F2F5EA;
+    --light-2: #D6DBD2;
 
-    background-color: var(--fg-1);
-    color: var(--fg-1);
+    background-color: var(--light-1);
+    color: var(--dark);
+    font-family: sans-serif;
 }
+
+@media (prefers-color-scheme: dark) {
+    html {
+        background-color: var(--dark);
+        color: var(--light-1);
+    }
+}
+
 
 body {
     padding: 1em;
@@ -16,18 +25,19 @@ body {
 button {
     background-color: var(--accent-subtle);
     border-radius: 0.25rem;
-    color: var(--bg);
+    color: var(--dark);
     font-weight: bold;
 }
 
 button.bright {
-    background-color: var(--fg-2);
+    background-color: var(--light-2);
     color: var(--accent-bright);
 }
 
 input {
-    background-color: var(--fg-2);
+    background-color: var(--light-2);
     border: none;
+    max-width: min(50%, 20em);
 }
 
 ul {
