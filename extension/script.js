@@ -1,9 +1,3 @@
-// source: https://github.com/thomasasfk/clipsync/blob/main/config.py
-const TWITCH_GQL_CONFIG = {
-    url: "https://gql.twitch.tv/gql",
-    client_id: "kimne78kx3ncx6brgo4mv6wki5h1ko",
-};
-
 /**
  * Perform a GQL query using the Twitch GQL API.
  * 
@@ -12,6 +6,12 @@ const TWITCH_GQL_CONFIG = {
  * @param {JSON => void} callback Handler for returned JSON.
  */
 function twitchGqlQuery(gql, vars, callback) {
+    // source: https://github.com/thomasasfk/clipsync/blob/main/config.py
+    const TWITCH_GQL_CONFIG = {
+        url: "https://gql.twitch.tv/gql",
+        client_id: "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    };
+    
     fetch(TWITCH_GQL_CONFIG.url, {
         headers: { "Client-Id": TWITCH_GQL_CONFIG.client_id },
         method: "POST",
@@ -56,6 +56,11 @@ function getLatestStreamerVods(streamers, callback) {
     );
 }
 
+/**
+ * @param {String} text Text to put on the link. 
+ * @param {String} url URL to link to. 
+ * @returns {HTMLElement} VLR styled vod link to the given URL.
+ */
 function createStreamLink(text, url) {
     // This is hard coded on the vod list items on VLR.gg.
     const STYLE = `
@@ -67,8 +72,7 @@ function createStreamLink(text, url) {
         flex: 1;
     `;
 
-    let streamLink = document.createElement("a");
-    streamLink.classList.add("wf-card", "mod-dark");
+    let streamLink = el("a", "wf-card", "mod-dark");
     streamLink.target = "_blank";
     streamLink.style = STYLE;
 
@@ -78,22 +82,35 @@ function createStreamLink(text, url) {
     return streamLink;
 }
 
+/**
+ * VLR uses an invisible element as a line break in the vod list. This creates
+ * such an element.
+ * @returns Divider element for the vod list.
+ */
 function createStreamDivider() {
     // This is hard coded on the dividers on VLR.gg.
     const STYLE = "flex-basis: 100%; height: 0;";
 
-    let el = document.createElement("div");
-    el.style = STYLE;
-    return el;
+    let divider = el("div");
+    divider.style = STYLE;
+    return divider;
 }
 
-function addToVodList(el) {
+/**
+ * Add an element to the match vod list.
+ * @param {HTMLElement} element Element to add to vod list. 
+ */
+function addToVodList(element) {
     const VOD_LIST_SELECTOR = ".match-vods .match-streams-container";
 
     let container = document.querySelector(VOD_LIST_SELECTOR);
-    container.appendChild(el);
+    add(element, container);
 }
 
+/**
+ * Add a link for each vod in vods, including line breaks every two vods.
+ * @param {Object[]} vods Vods to create links to.
+ */
 function addStreamLinks(vods) {
     let i = 0;
     for (const vod of vods) {
@@ -160,7 +177,7 @@ function getVodUrl(matchTime, videoId, streamTime) {
  * @returns {String|null} A vod url if one was found, else null.
  */
 function findCoStream(matchTime, regex, edges) {
-    for (const edge of edges) {
+    for (const edge of edges || []) {
         let video = edge["node"];
 
         if (!regex.test(video["title"])) {
@@ -202,18 +219,6 @@ function findCoStreams(streamers, regex, callback) {
 }
 
 /**
- * Load the configuration details from browser storage.
- * @param {Object => void} callback Handler for the loaded config. 
- */
-function loadConfig(callback) {
-    const STORAGE_KEY = "config";
-
-    getBrowser().storage.sync.get(STORAGE_KEY).then(
-        resp => callback(resp.config)
-    ); 
-}
-
-/**
  * @param {String[]} keywords Keywords to compile into a regex.
  * @returns Regex matching at least one keyword in string.
  */
@@ -225,8 +230,8 @@ function compileKeywords(keywords) {
  * Create a link for each co stream found.
  */
 function addCoStreamLinks() {
-    loadConfig(config => { 
-        if (config.streamers && config.streamers.length) {
+    loadConfig(config => {
+        if (config?.streamers.length) {
             findCoStreams(
                 config.streamers,
                 compileKeywords(config.keywords),

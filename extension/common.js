@@ -9,6 +9,32 @@ function getBrowser() {
 }
 
 /**
+ * Ensure that config and all needed keys are defined, setting to default
+ * values if missing.
+ * 
+ * @param {Object} config Configuration loaded from browser storage.
+ * @returns Validated config.
+ */
+function validateConfig(config) {
+    config = config || {};
+    config.streamers = config.streamers || [];
+    config.keywords = config.keywords || ["costream", "watchparty", "vs"];
+    return config;
+}
+
+/**
+ * Load the configuration details from browser storage.
+ * @param {Object => void} callback Handler for the loaded config. 
+ */
+function loadConfig(callback) {
+    const STORAGE_KEY = "config";
+
+    getBrowser().storage.sync.get(STORAGE_KEY).then(
+        resp => callback(validateConfig(resp.config))
+    ); 
+}
+
+/**
  * Create an element.
  * 
  * @param {String} tagName Tag name of element to create.

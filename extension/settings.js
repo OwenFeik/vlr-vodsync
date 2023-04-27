@@ -6,12 +6,12 @@ function listInput(id, description) {
     let root = add(el("div", "config-entry"));
     root.id = id;
 
-    let header = add(el("div", "header"), root);
+    let header = add(el("div", "row"), root);
 
     let title = add(el("span", "title"), header);
     title.innerText = id;
 
-    let button = add(el("button"), header);
+    let button = add(el("button"), root);
     button.innerText = "Add";
 
     let list = add(el("ul"), root);
@@ -55,11 +55,18 @@ function listInput(id, description) {
  * @returns Button to save all fields on click.
  */
 function submitButton() {
-    let button = add(el("button"));
+    let root = add(el("div", "row"));
+
+    let button = add(el("button"), root);
+    let message = add(el("span"), root);
+
     button.innerText = "Save";
     button.addEventListener("click",  () => {
         getBrowser().storage.sync.set({ config: serialise() }).then(
-            () => console.log("Saved!")
+            () => {
+                setTimeout(() => message.innerText = "", 1500);
+                message.innerText = "Saved!";
+            }
         );
     });
 }
@@ -97,14 +104,8 @@ function serialise() {
  * Load configuration information and submit it to UI elements.
  */
 function deserialise() {
-    const STORAGE_KEY = "config";
-
-    getBrowser().storage.sync.get(STORAGE_KEY).then(data => {
-        if (!data?.config) {
-            return;
-        }
-
-        for (const [k, v] of Object.entries(data.config)) {
+    loadConfig(config => {
+        for (const [k, v] of Object.entries(config)) {
             try {
                 document.getElementById(k).deserialise(v);
             } catch {}

@@ -49,10 +49,11 @@ li {
     padding-bottom: 0.5em;
 }
 
-.header {
+.row {
     align-items: center;
     display: flex;
     flex-direction: row;
+    gap: 0.5em;
 }
 
 .title {
