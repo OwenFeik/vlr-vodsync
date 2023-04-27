@@ -8,13 +8,21 @@
         "https://gql.twitch.tv/gql"
     ],
     "content_scripts": [
-            {
+        {
             "matches": ["*://*.vlr.gg/*"],
             "js": ["script.js"]
         }
     ],
+    "options_ui": {
+        "page": "settings.html"
+    },
     "browser_action": {
         "default_title": "Vodsync for VLR.gg Settings",
         "default_popup": "settings.html"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "vlr-vodsync@owen.feik.xyz"
+        }
     }
 }

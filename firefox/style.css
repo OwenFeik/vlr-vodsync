@@ -1,0 +1,58 @@
+html {
+    --bg: #2C363F;
+    --accent-bright: #E75A7C;
+    --accent-subtle: #BBC7A4;
+    --fg-1: #F2F5EA;
+    --fg-2: #D6DBD2;
+
+    background-color: var(--fg-1);
+    color: var(--fg-1);
+}
+
+body {
+    padding: 1em;
+}
+
+button {
+    background-color: var(--accent-subtle);
+    border-radius: 0.25rem;
+    color: var(--bg);
+    font-weight: bold;
+}
+
+button.bright {
+    background-color: var(--fg-2);
+    color: var(--accent-bright);
+}
+
+input {
+    background-color: var(--fg-2);
+    border: none;
+}
+
+ul {
+    padding-left: 0;
+}
+
+li {
+    list-style-type: none;
+    padding-bottom: 0.5em;
+}
+
+.header {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+}
+
+.title {
+    color: var(--accent-bright);
+    font-family: monospace;
+    font-size: 2em;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.title + button {
+    margin-left: 2em;
+}

@@ -23,7 +23,8 @@ function twitchGqlQuery(gql, vars, callback) {
 }
 
 /**
- * Query Latest 100 vods 
+ * Query Latest 100 vods. Based on:
+ * https://github.com/thomasasfk/clipsync/blob/main/_twitch/queries.py#L81
  * 
  * @param {String[]} streamers Streamer login names.
  * @param {Object[] => void} callback Handler for returned JSON data. 
@@ -38,6 +39,7 @@ function getLatestStreamerVods(streamers, callback) {
                     node {
                         id
                         createdAt
+                        title
                         lengthSeconds
                     }
                     cursor
@@ -52,13 +54,6 @@ function getLatestStreamerVods(streamers, callback) {
         { logins: streamers },
         resp => { callback(resp["data"]); }
     );
-}
-
-function addStreamLink(text, url) {
-    const VOD_LIST_SELECTOR = ".match-vods .match-streams-container";
-
-    let container = document.querySelector(VOD_LIST_SELECTOR);
-    container.appendChild(createStreamLink(text, url));
 }
 
 function createStreamLink(text, url) {
@@ -81,6 +76,32 @@ function createStreamLink(text, url) {
     streamLink.href = url;
 
     return streamLink;
+}
+
+function createStreamDivider() {
+    // This is hard coded on the dividers on VLR.gg.
+    const STYLE = "flex-basis: 100%; height: 0;";
+
+    let el = document.createElement("div");
+    el.style = STYLE;
+    return el;
+}
+
+function addToVodList(el) {
+    const VOD_LIST_SELECTOR = ".match-vods .match-streams-container";
+
+    let container = document.querySelector(VOD_LIST_SELECTOR);
+    container.appendChild(el);
+}
+
+function addStreamLinks(vods) {
+    let i = 0;
+    for (const vod of vods) {
+        if (!(i++ % 2)) {
+            addToVodList(createStreamDivider());
+        }
+        addToVodList(createStreamLink(vod.streamer, vod.url));
+    }
 }
 
 /**
@@ -134,12 +155,18 @@ function getVodUrl(matchTime, videoId, streamTime) {
 
 /**
  * @param {number} matchTime Scheduled match start timestamp (epoch ms)
+ * @param {RegExp} regex Regex to match title against.
  * @param {Object[]} edges GQL edges to search for a co stream. 
  * @returns {String|null} A vod url if one was found, else null.
  */
-function findCoStream(matchTime, edges) {
+function findCoStream(matchTime, regex, edges) {
     for (const edge of edges) {
         let video = edge["node"];
+
+        if (!regex.test(video["title"])) {
+            continue;
+        }
+
         let streamTime = new Date(video["createdAt"]).getTime();
         let streamLength = video["lengthSeconds"] * 1000; // s to ms
         if (vodIncludesMatch(matchTime, streamTime, streamLength)) {
@@ -153,17 +180,18 @@ function findCoStream(matchTime, edges) {
  * Finds a list of vods and calls callback with an array of { streamer, url }
  * objects.
  *  
+ * @param {String[]} streamers List of streamer logins to check.
+ * @param {RegExp} regex Regex to match title against.
  * @param {Object[] => void} callback Handler for vod list. 
  */
-function findCoStreams(callback) {
-    let streamers = ["sliggytv", "sideshow"];
-
+function findCoStreams(streamers, regex, callback) {
     let matchTime = getMatchTime();
     getLatestStreamerVods(streamers, data => {
         let vods = [];
 
         data["users"].forEach(entry => {
-            let url = findCoStream(matchTime, entry["videos"]["edges"]);
+            let videos = entry["videos"]["edges"];
+            let url = findCoStream(matchTime, regex, videos);
             if (url) {
                 vods.push({ streamer: entry["login"], url });
             }
@@ -174,14 +202,38 @@ function findCoStreams(callback) {
 }
 
 /**
+ * Load the configuration details from browser storage.
+ * @param {Object => void} callback Handler for the loaded config. 
+ */
+function loadConfig(callback) {
+    const STORAGE_KEY = "config";
+
+    browser.storage.sync.get(STORAGE_KEY).then(
+        resp => callback(resp.config)
+    ); 
+}
+
+/**
+ * @param {String[]} keywords Keywords to compile into a regex.
+ * @returns Regex matching at least one keyword in string.
+ */
+function compileKeywords(keywords) {
+    return new RegExp((keywords || []).join("|"), "i");
+}
+
+/**
  * Create a link for each co stream found.
  */
 function addCoStreamLinks() {
-    findCoStreams(
-        vods => vods.forEach(
-            vod => addStreamLink(vod.streamer, vod.url)
-        )
-    );
+    loadConfig(config => { 
+        if (config.streamers && config.streamers.length) {
+            findCoStreams(
+                config.streamers,
+                compileKeywords(config.keywords),
+                addStreamLinks
+            );
+        }
+    });
 }
 
 /**
