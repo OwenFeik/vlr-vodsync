@@ -1,30 +1,4 @@
 /**
- * Create an element.
- * 
- * @param {String} tagName Tag name of element to create.
- * @param  {...String} classes Classes to add to element. 
- * @returns 
- */
-function el(tagName, ...classes) {
-    let el = document.createElement(tagName);
-    for (const cls of classes) {
-        el.classList.add(cls);
-    }
-    return el;
-}
-
-/**
- * Add an element to the document.
- * @param {HTMLElement} el Element to add. 
- * @param {HTMLElement} parent Element to add to. Fallback to body.
- */
-function add(el, parent) {
-    parent = parent || document.body;
-    parent.appendChild(el);
-    return el;
-}
-
-/**
  * @param {String} id ID of the element ( == config key). 
  * @returns A new list input.
  */
@@ -84,7 +58,7 @@ function submitButton() {
     let button = add(el("button"));
     button.innerText = "Save";
     button.addEventListener("click",  () => {
-        browser.storage.sync.set({ config: serialise() }).then(
+        getBrowser().storage.sync.set({ config: serialise() }).then(
             () => console.log("Saved!")
         );
     });
@@ -125,9 +99,15 @@ function serialise() {
 function deserialise() {
     const STORAGE_KEY = "config";
 
-    browser.storage.sync.get(STORAGE_KEY).then(data => {
+    getBrowser().storage.sync.get(STORAGE_KEY).then(data => {
+        if (!data?.config) {
+            return;
+        }
+
         for (const [k, v] of Object.entries(data.config)) {
-            document.getElementById(k).deserialise(v);
+            try {
+                document.getElementById(k).deserialise(v);
+            } catch {}
         }
     });
 }

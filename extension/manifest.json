@@ -1,22 +1,20 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "Vodsync for VLR.gg",
     "version": "1.0",
     "description": "Add Twitch costreams to VLR.gg",
-    "permissions": [
-        "storage",
-        "https://gql.twitch.tv/gql"
-    ],
+    "permissions": ["storage"],
+    "host_permissions": ["https://gql.twitch.tv/gql"],
     "content_scripts": [
         {
             "matches": ["*://*.vlr.gg/*"],
-            "js": ["script.js"]
+            "js": ["common.js", "script.js"]
         }
     ],
     "options_ui": {
         "page": "settings.html"
     },
-    "browser_action": {
+    "action": {
         "default_title": "Vodsync for VLR.gg Settings",
         "default_popup": "settings.html"
     },

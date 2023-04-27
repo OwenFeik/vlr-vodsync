@@ -208,7 +208,7 @@ function findCoStreams(streamers, regex, callback) {
 function loadConfig(callback) {
     const STORAGE_KEY = "config";
 
-    browser.storage.sync.get(STORAGE_KEY).then(
+    getBrowser().storage.sync.get(STORAGE_KEY).then(
         resp => callback(resp.config)
     ); 
 }
