@@ -2,6 +2,9 @@
     "manifest_version": 2,
     "name": "Vodsync for VLR.gg",
     "version": "1.0",
+    "icons": {
+        "128": "logo.png"
+    },
     "description": "Add Twitch costreams to VLR.gg",
     "permissions": [
         "storage",
@@ -19,6 +22,7 @@
     },
     "browser_action": {
         "default_title": "Vodsync for VLR.gg Settings",
+        "default_icon": "logo.png",
         "default_popup": "settings.html"
     },
     "browser_specific_settings": {
