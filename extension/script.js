@@ -112,6 +112,14 @@ function addToVodList(element) {
  * @param {Object[]} vods Vods to create links to.
  */
 function addStreamLinks(vods) {
+    if (vods?.length) {
+        // Remove "Not yet available" message.
+        let firstEntry = document.querySelector(".match-vods .wf-card");
+        if (firstEntry?.style.fontStyle == "italic") {
+            firstEntry.remove();
+        }
+    }
+
     let i = 0;
     for (const vod of vods) {
         if (!(i++ % 2)) {
