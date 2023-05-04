@@ -18,7 +18,7 @@ function getBrowser() {
 function validateConfig(config) {
     config = config || {};
     config.streamers = config.streamers || [];
-    config.keywords = config.keywords || ["costream", "watchparty", "vs"];
+    config.keywords = config.keywords || [];
     return config;
 }
 

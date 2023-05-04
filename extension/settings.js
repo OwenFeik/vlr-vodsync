@@ -51,6 +51,28 @@ function listInput(id, description) {
     };
 }
 
+function checkboxInput(id, description) {
+    let root = add(el("div", "config-entry"));
+    root.id = id;
+
+    let body = add(el("div", "row"), root);
+
+    let title = add(el("span", "title"), body);
+    title.innerText = id;
+
+    let input = add(el("input"), body);
+    input.type = "checkbox";
+
+    if (description) {
+        let desc = add(el("p"), root);
+        desc.innerText = description;
+    }
+
+    root.serialise = () => input.checked;
+
+    root.deserialise = value => { input.checked = value; };
+}
+
 /**
  * @returns Button to save all fields on click.
  */
@@ -83,7 +105,8 @@ function buildUi() {
         "keywords",
         (
             "Only streams where the title contains at least one of these"
-            + " keywords will be shown."
+            + " keywords will be shown. Stream titles are also required to"
+            + " contain a word from a team name or a team letter code."
         )
     );
     submitButton();

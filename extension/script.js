@@ -57,11 +57,10 @@ function getLatestStreamerVods(streamers, callback) {
 }
 
 /**
- * @param {String} text Text to put on the link. 
- * @param {String} url URL to link to. 
+ * @param {Object} vod VOD object to create link to. 
  * @returns {HTMLElement} VLR styled vod link to the given URL.
  */
-function createStreamLink(text, url) {
+function createStreamLink(vod) {
     // This is hard coded on the vod list items on VLR.gg.
     const STYLE = `
         height: 37px;
@@ -76,8 +75,14 @@ function createStreamLink(text, url) {
     streamLink.target = "_blank";
     streamLink.style = STYLE;
 
-    streamLink.text = text;
-    streamLink.href = url;
+    let name = add(el("b"), streamLink);
+    name.style.paddingRight = "1em";
+    name.innerText = vod.streamer;
+
+    let title = add(el("span"), streamLink);
+    title.innerText = vod.title;
+
+    streamLink.href = vod.url;
 
     return streamLink;
 }
@@ -125,7 +130,7 @@ function addStreamLinks(vods) {
         if (!(i++ % 2)) {
             addToVodList(createStreamDivider());
         }
-        addToVodList(createStreamLink(vod.streamer, vod.url));
+        addToVodList(createStreamLink(vod));
     }
 }
 
@@ -179,24 +184,42 @@ function getVodUrl(matchTime, videoId, streamTime) {
 }
 
 /**
- * @param {number} matchTime Scheduled match start timestamp (epoch ms)
- * @param {RegExp} regex Regex to match title against.
- * @param {Object[]} edges GQL edges to search for a co stream. 
- * @returns {String|null} A vod url if one was found, else null.
+ * Check if a title matches all of an array of regular expressions. Returns
+ * true if the array is empty.
+ * 
+ * @param {RegExp[]} regexes Regexes to match title against. 
+ * @param {String} title Title to check.
+ * @return {boolean} Whether title matches all regexes.
  */
-function findCoStream(matchTime, regex, edges) {
+function satisfiesRegexes(regexes, title) {
+    return regexes.reduce((ok, regexp) => ok && regexp.test(title), true);
+}
+
+/**
+ * @param {number} matchTime Scheduled match start timestamp (epoch ms)
+ * @param {RegExp[]} regexes Regexes to match title against.
+ * @param {Object[]} edges GQL edges to search for a co stream. 
+ * @returns {Object|null} A vod if one was found, else null.
+ */
+function findCoStream(matchTime, regexes, edges) {
     for (const edge of edges || []) {
         let video = edge["node"];
 
-        if (!regex.test(video["title"])) {
+        let streamTime = new Date(video["createdAt"]).getTime();
+        let streamLength = video["lengthSeconds"] * 1000; // s to ms
+        if (!vodIncludesMatch(matchTime, streamTime, streamLength)) {
             continue;
         }
 
-        let streamTime = new Date(video["createdAt"]).getTime();
-        let streamLength = video["lengthSeconds"] * 1000; // s to ms
-        if (vodIncludesMatch(matchTime, streamTime, streamLength)) {
-            return getVodUrl(matchTime, video["id"], streamTime);
+        let title = video["title"];
+        if (!satisfiesRegexes(regexes, title)) {
+            continue;
         }
+
+        return {
+            title,
+            url: getVodUrl(matchTime, video["id"], streamTime)
+        };
     }
     return null;
 }
@@ -206,24 +229,84 @@ function findCoStream(matchTime, regex, edges) {
  * objects.
  *  
  * @param {String[]} streamers List of streamer logins to check.
- * @param {RegExp} regex Regex to match title against.
+ * @param {RegExp[]} regex Regexes to match title against.
  * @param {Object[] => void} callback Handler for vod list. 
  */
-function findCoStreams(streamers, regex, callback) {
+function findCoStreams(streamers, regexes, callback) {
     let matchTime = getMatchTime();
     getLatestStreamerVods(streamers, data => {
         let vods = [];
 
         data["users"].forEach(entry => {
+            // TODO sometimes entry["videos"] is null, indicates a failed req
+            if (!entry["videos"]) {
+                return;
+            }
+            
             let videos = entry["videos"]["edges"];
-            let url = findCoStream(matchTime, regex, videos);
-            if (url) {
-                vods.push({ streamer: entry["login"], url });
+            let vod = findCoStream(matchTime, regexes, videos);
+            if (vod) {
+                vod.streamer = entry["login"];
+                vods.push(vod);
             }
         });
     
         callback(vods);
     });
+}
+
+/**
+ * Given a team name, return a list of non-generic tokens found in the name.
+ * 
+ * @param {String} name Name to split. 
+ * @returns {String[]} Non-generic tokens found in the name. 
+ */
+function teamNameTokens(name) {
+    const IGNORE_LIST = ["the", "in"];
+
+    let words = name.trim().split(" ");
+    return words
+        .map(word => word.trim().toLowerCase())
+        .filter(word => !IGNORE_LIST.includes(word));
+}
+
+/**
+ * @returns {String[]} A list team name tokens found in the match card.
+ */
+function getTeamNameTokens() {
+    // Selector for the main blue team title links on the match card.
+    const SELECTOR = ".match-header-link-name .wf-title-med";
+    
+    let tokens = [];
+    document.querySelectorAll(SELECTOR).forEach(title => {
+        for (const token of teamNameTokens(title.innerText)) {
+            if (!tokens.includes(token)) {
+                tokens.push(token);
+            }
+        }
+    });
+
+    return tokens;
+}
+
+/**
+ * @returns {String[]} A list containing all team codes found in match info.
+ */
+function getTeamAbbreviations() {
+    // Selector for the small grey below the player name with the team code.
+    const SELECTOR = ".mod-player .ge-text-light";
+
+    let teamAbbreviations = [];
+    document.querySelectorAll(SELECTOR).forEach(
+        label => {
+            let abbr = label.innerText.trim().toLowerCase();
+            if (!teamAbbreviations.includes(abbr)) {
+                teamAbbreviations.push(abbr);
+            }
+        }
+    );
+
+    return teamAbbreviations;
 }
 
 /**
@@ -235,18 +318,25 @@ function compileKeywords(keywords) {
 }
 
 /**
- * Create a link for each co stream found.
+ * Create the appropriate regexes based on the config.
+ * 
+ * @param {Object} config Validated loaded config. 
+ * @returns {RegExp[]} Regexes to match VOD titles.
  */
-function addCoStreamLinks() {
-    loadConfig(config => {
-        if (config?.streamers.length) {
-            findCoStreams(
-                config.streamers,
-                compileKeywords(config.keywords),
-                addStreamLinks
-            );
-        }
-    });
+function createRegexes(config) {
+    let regexes = [];
+    
+    // Any one user configured keyword
+    if (config.keywords.length) {
+        regexes.push(compileKeywords(config.keywords));
+    }
+
+    // Any one team token (letter code or word from team name)
+    let tokens = getTeamNameTokens().concat(getTeamAbbreviations());
+    regexes.push(compileKeywords(tokens));
+   
+    
+    return regexes;
 }
 
 /**
@@ -259,7 +349,15 @@ function isMatchPage() {
 
 function main() {
     if (isMatchPage()) {
-        addCoStreamLinks();
+        loadConfig(config => {
+            if (config.streamers.length) {
+                findCoStreams(
+                    config.streamers,
+                    createRegexes(config),
+                    addStreamLinks
+                );
+            }
+        });
     }
 }
 

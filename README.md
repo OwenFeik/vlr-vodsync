@@ -6,3 +6,8 @@ Browser extension which adds links to co-stream VODs to VLR.gg match pages.
 
 Available now for
 [Firefox](https://addons.mozilla.org/en-US/firefox/addon/vodsync-for-vlr-gg/).
+
+## TODO
+
+* Handle bad response by retrying.
+* Add icon to Firefox extension.
