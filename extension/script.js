@@ -114,9 +114,10 @@ function addToVodList(element) {
 
 /**
  * Add a link for each vod in vods, including line breaks every two vods.
- * @param {Object[]} vods Vods to create links to.
+ * @param {Object[]} vods VODs to create links to.
+ * @param {number} streamsPerRow Number of VODs to include in each row.
  */
-function addStreamLinks(vods) {
+function addStreamLinks(vods, streamsPerRow) {
     if (vods?.length) {
         // Remove "Not yet available" message.
         let firstEntry = document.querySelector(".match-vods .wf-card");
@@ -127,7 +128,7 @@ function addStreamLinks(vods) {
 
     let i = 0;
     for (const vod of vods) {
-        if (!(i++ % 2)) {
+        if (!(i++ % streamsPerRow)) {
             addToVodList(createStreamDivider());
         }
         addToVodList(createStreamLink(vod));
@@ -184,15 +185,16 @@ function getVodUrl(matchTime, videoId, streamTime) {
 }
 
 /**
- * Check if a title matches all of an array of regular expressions. Returns
+ * Check if a title matches any of an array of regular expressions. Returns
  * true if the array is empty.
  * 
  * @param {RegExp[]} regexes Regexes to match title against. 
  * @param {String} title Title to check.
- * @return {boolean} Whether title matches all regexes.
+ * @return {boolean} Whether title matches any regexe.
  */
 function satisfiesRegexes(regexes, title) {
-    return regexes.reduce((ok, regexp) => ok && regexp.test(title), true);
+    if (!regexes.length) return true;
+    return regexes.reduce((ok, regexp) => ok || regexp.test(title), false);
 }
 
 /**
@@ -238,7 +240,6 @@ function findCoStreams(streamers, regexes, callback) {
         let vods = [];
 
         data["users"].forEach(entry => {
-            // TODO sometimes entry["videos"] is null, indicates a failed req
             if (!entry["videos"]) {
                 return;
             }
@@ -354,7 +355,7 @@ function main() {
                 findCoStreams(
                     config.streamers,
                     createRegexes(config),
-                    addStreamLinks
+                    vods => addStreamLinks(vods, config.streamsPerRow)
                 );
             }
         });

@@ -1,33 +1,80 @@
 /**
+ * @param {String} string String to capitalise. 
+ * @returns {String} string with first letter capitalised. 
+ */
+function capitalise(string) {
+    return string.substring(0, 1).toUpperCase() + string.substring(1);
+}
+
+/**
+ * Convert an ID from camel case to a string with each word capitalised and add
+ * a span with this text and the title class to the parent element provided.
+ * 
+ * @param {String} id ID to convert to a title. 
+ * @param {HTMLElement} parent Element to add child to.
+ * @returns {HTMLElement} New title element.
+ */
+function addTitle(id, parent) {
+    let words = [];
+    let word = "";
+    for (const char of id) {
+        if (char == char.toUpperCase() && word) {
+            words.push(capitalise(word));
+            word = "";
+        }
+        word += char;
+    }
+
+    if (word) {
+        words.push(capitalise(word));
+    }
+
+    let title = add(el("span", "title"), parent);
+    title.innerText = words.join(" ");
+    
+    return title;
+}
+
+/**
+ * Add a description on a parent element. Does nothing if text is empty.
+ * 
+ * @param {String} text Text to add to the description. 
+ * @param {HTMLElement} parent Parent to add description to. 
+ * @returns {HTMLElement} Newly created element.
+ */
+function addDescription(text, parent) {
+    if (!text) return null;
+
+    let desc = add(el("p"), parent);
+    desc.innerText = text;
+    return desc;
+}
+
+/**
  * @param {String} id ID of the element ( == config key). 
- * @returns A new list input.
  */
 function listInput(id, description) {
     let root = add(el("div", "config-entry"));
     root.id = id;
 
     let header = add(el("div", "row"), root);
+    addTitle(id, header);
 
-    let title = add(el("span", "title"), header);
-    title.innerText = id;
-
-    let button = add(el("button"), root);
+    let button = add(el("button"), header);
     button.innerText = "Add";
 
     let list = add(el("ul"), root);
 
-    if (description) {
-        let desc = add(el("p"), root);
-        desc.innerText = description;
-    }
+    addDescription(description, root);
 
     const add_item = text => {
         let item = add(el("li"), list);
         let input = add(el("input"), item);
         input.value = text;
+        input.addEventListener("input", serialise);
         let remove = add(el("button", "bright"), item);
         remove.innerText = "Remove"
-        remove.onclick = () => item.remove();
+        remove.onclick = () => { item.remove(); serialise(); };
     };
 
     button.onclick = () => add_item("");
@@ -51,22 +98,21 @@ function listInput(id, description) {
     };
 }
 
+/**
+ * @param {String} id ID and config entry key of the boolean. 
+ * @param {String} description Description of the entry.
+ */
 function checkboxInput(id, description) {
     let root = add(el("div", "config-entry"));
     root.id = id;
 
     let body = add(el("div", "row"), root);
-
-    let title = add(el("span", "title"), body);
-    title.innerText = id;
+    addTitle(id, body);
 
     let input = add(el("input"), body);
     input.type = "checkbox";
 
-    if (description) {
-        let desc = add(el("p"), root);
-        desc.innerText = description;
-    }
+    addDescription(description, root);
 
     root.serialise = () => input.checked;
 
@@ -74,23 +120,25 @@ function checkboxInput(id, description) {
 }
 
 /**
- * @returns Button to save all fields on click.
+ * @param {String} id ID and config entry key of the number. 
+ * @param {String} description Description of the entry.
  */
-function submitButton() {
-    let root = add(el("div", "row"));
+function numberInput(id, description) {
+    let root = add(el("div", "config-entry"));
+    root.id = id;
 
-    let button = add(el("button"), root);
-    let message = add(el("span"), root);
+    let header = add(el("div", "row"), root);
+    let title = addTitle(id, header);
+    title.style.paddingRight = "1em";
 
-    button.innerText = "Save";
-    button.addEventListener("click",  () => {
-        getBrowser().storage.sync.set({ config: serialise() }).then(
-            () => {
-                setTimeout(() => message.innerText = "", 1500);
-                message.innerText = "Saved!";
-            }
-        );
-    });
+    let input = add(el("input"), header);
+    input.type = "number";
+
+    addDescription(description, root);
+
+    root.serialise = () => input.valueAsNumber;
+
+    root.deserialise = value => { input.value = String(value); };
 }
 
 /**
@@ -104,12 +152,15 @@ function buildUi() {
     listInput(
         "keywords",
         (
-            "Only streams where the title contains at least one of these"
-            + " keywords will be shown. Stream titles are also required to"
-            + " contain a word from a team name or a team letter code."
+            "Streams where the title contains at least one of these"
+            + " keywords will be shown. Streams with titles which contain a"
+            + " word from a team name or a team letter code."
         )
     );
-    submitButton();
+    numberInput(
+        "streamsPerRow",
+        "Number of streams to show in each row of the VOD list."
+    );
 }
 
 /**
@@ -120,7 +171,10 @@ function serialise() {
     document.querySelectorAll(".config-entry").forEach(
         setting => config[setting.id] = setting.serialise()
     );
-    return config;
+
+    getBrowser().storage.sync.set({ config }).then(
+        () => console.log("Saved", config)
+    );
 }
 
 /**
@@ -133,12 +187,17 @@ function deserialise() {
                 document.getElementById(k).deserialise(v);
             } catch {}
         }
+        console.log("Loaded", config);
     });
 }
 
 function main() {
     buildUi();
     deserialise();
+
+    document.querySelectorAll("input").forEach(el => {
+        el.addEventListener("input", serialise);
+    });
 }
 
 main();
