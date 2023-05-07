@@ -154,7 +154,8 @@ function buildUi() {
         (
             "Streams where the title contains at least one of these"
             + " keywords will be shown. Streams with titles which contain a"
-            + " word from a team name or a team letter code."
+            + " word from a team name or a team letter code will also be"
+            + " shown."
         )
     );
     numberInput(
