@@ -26,4 +26,5 @@ echo "Built Chrome extension at $CHROME"
 # Chrome extension
 PACKED="$BUILD/vlr-vodsync.zip"
 zip -j "$PACKED" "$CHROME/"* > /dev/null
+cd "$ROOT/extension" && zip "$PACKED" icons/*.png > /dev/null && cd "$ROOT"
 echo "Packed Chrome extension at $CHROME"
